@@ -1,5 +1,9 @@
 
-run:
-	gcc -I "SDL/include/" src/main.c src/DinoRush.c src/window.c -o dinodash.exe -L SDL/lib -lSDL3 
+runW:
+	gcc -Wall -DWIN -I "SDL/include/" src/*.c  -o dinorush.exe -L SDL/lib -lSDL3 -lSDL3_image -lSDL3_ttf
+runL:
+	gcc -Wall -DLINUX -I "SDL/include/" src/*.c  -o dinorush -L SDL/lib -lSDL3 -lSDL3_image -lSDL3_ttf
+runM:
+	gcc -Wall -DMAC -I "SDL/include/" src/*.c  -o dinorush -L SDL/lib -lSDL3 -lSDL3_image -lSDL3_ttf
 clean:
 	rm -f *.exe *.o
