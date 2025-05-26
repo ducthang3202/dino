@@ -38,7 +38,14 @@ void Dino_Draw(){
     SDL_FRect dino_r_src = { 1678 + sprite_offset, ducking_offset_y , dino->hitbox.w , dino->hitbox.h };
     SDL_RenderTexture(renderer, sprites_txt, &dino_r_src, &dino->hitbox);
   //  SDL_Log("%d\n", 1678 + sprite_offset);
+    if(!show_hitbox)
+        return;
+    
     SDL_RenderRect(renderer, &dino->hitbox);
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_FRect grace_box = (SDL_FRect){dino->hitbox.x + GRACE_ZONE, dino->hitbox.y + GRACE_ZONE/2, dino->hitbox.w - GRACE_ZONE * 2, dino->hitbox.h - GRACE_ZONE*1.5f };
+    SDL_RenderRect(renderer, &grace_box);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }
 
 void Obstacle_DrawCactus(Obstacle* self){
@@ -50,15 +57,33 @@ void Obstacle_DrawCactus(Obstacle* self){
     SDL_FRect cactus_r_src = { 653 + CACTUS_W * self->sprite + g, 0 , self->hitbox.w , self->hitbox.h };
     SDL_RenderTexture(renderer, sprites_txt, &cactus_r_src, &self->hitbox);
 
+    if(!show_hitbox)
+        return;
+
     SDL_RenderRect(renderer, &self->hitbox);
 }
+void Obstacle_DrawPterodactyl(Obstacle* self){
 
+    self->animation_counter++;
+    if(self->animation_counter > FPS/2){
+        self->animation_counter = 0;
+        self->sprite = (self->sprite + 1) % 2;
+    }
+    SDL_FRect pt_r_src = { 260 + 90 * self->sprite, 0 , 90, 85 };
+    SDL_FRect pt_r = { self->hitbox.x, self->hitbox.y , 90, 85 };
+    SDL_RenderTexture(renderer, sprites_txt, &pt_r_src, &pt_r);
+
+    if(!show_hitbox)
+        return;
+        
+    SDL_RenderRect(renderer, &pt_r);
+}
 void Dino_Move(){
-    dino->hitbox.y = ground - DINO_H;
+    dino->hitbox.y = dino->ducking ? ground - DINO_H + 30 : ground - DINO_H;
 
     if(angle != 0 && angle < PI){
 
-        float high_jump = w_bounds.h / 3;
+        float high_jump = w_bounds.h / 3 + w_bounds.h / 10;
         float low_jump = w_bounds.h / 6;
 
         int amplitude = 0;
@@ -70,10 +95,8 @@ void Dino_Move(){
         }
         
         dino->hitbox.y -= sin(angle) * amplitude;
-        angle += PI/(float)FPS;
+        angle += PI/((float)FPS*1.1f);
         dino->mid_air = true;
-    }else{
-    //    dino->hitbox.y = 
     }
 
     if(angle >= PI){
@@ -102,26 +125,9 @@ void Dino_PassedObstacle(Obstacle* obs){
 
 }
 
-Dino* DinoCreate(){
-
-}
-
 void Obstacle_MoveCactus(Obstacle* self){
     self->hitbox.x -= 1.7f;
 }
 void Obstacle_MovePterodactyl(Obstacle* self){
     self->hitbox.x -= 2.2f;
-}
-void Obstacle_DrawPterodactyl(Obstacle* self){
-
-    self->animation_counter++;
-    if(self->animation_counter > FPS/2){
-        self->animation_counter = 0;
-        self->sprite = (self->sprite + 1) % 2;
-    }
-    SDL_FRect pt_r_src = { 260 + 90 * self->sprite, 0 , 90 , 85 };
-    SDL_FRect pt_r = { self->hitbox.x , self->hitbox.y , 90, 85 };
-    SDL_RenderTexture(renderer, sprites_txt, &pt_r_src, &pt_r);
-
-    SDL_RenderRect(renderer, &pt_r);
 }

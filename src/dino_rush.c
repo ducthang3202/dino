@@ -1,6 +1,7 @@
 #include "../header/dino_rush.h" 
 
 Dino* dino = NULL;
+FILE* high_score_file = NULL;
 SDL_Texture* sprites_txt = NULL;
 SDL_Texture* bg_txt = NULL;
 SDL_Surface* bg_s = NULL;
@@ -10,12 +11,11 @@ bool done = false;
 bool dead = false;
 bool start_animation = false;
 
-
-int jump_timer = 0;
 int retry_animation_counter = 0;
 int retry_animation = 0;
-int high_score = 0;
-bool long_jump = false, jump_down = false;
+int high_score = 0, total_high_score = 0;
+bool show_hitbox = false;
+bool long_jump = false;
 
 int DR_Init(){
     // store player on mem heap
@@ -59,16 +59,32 @@ int DR_Start(){
 
     done = false;
     dead = false;
+    int feedback = 0;
 
     if(DR_Init() != 0){
         SDL_Log("- couldnt init Game!\n");
         return -1;
     }
 
-    if(DR_Run() != 0){
-        SDL_Log("- Unexpected Game crash!\n");
+    fopen_s(&high_score_file, "high_score.txt", "r");
+
+    if(high_score_file == NULL){
+        SDL_Log("- couldnt open high score file!\n");
         return -1;
+    }
+    char b[128];
+    fgets(b, 100, high_score_file);
+    total_high_score = atoi(b);
+       //SDL_Log("+ high score %d\n", total_high_score);
+    feedback = DR_Run();
+    if(feedback == GAME_WINDOW_EVENT_EXIT_CRASH){
+        SDL_Log("- Unexpected Game crash!\n");
     } 
+
+    snprintf(b, );
+    if(high_score > total_high_score){
+        fputs();
+    }
 
     SDL_Log("----------------------------\n");
     SDL_Log("+ Cleanup epilouge\n");
@@ -77,31 +93,35 @@ int DR_Start(){
     if(!LL_Clean(obj_list)){
         SDL_Log("- couldnt properly free Linked List data structure\n");
     }else{
-        SDL_Log("+ could properly free Linked List data structure\n");
+        SDL_Log("+ freed Linked List data structure\n");
     }
 
     free(dino);
     free(obj_list);
+    SDL_Log("+ freed allocated structs\n");
 
     SDL_DestroyTexture(bg_txt);
     SDL_DestroySurface(bg_s);
 
     SDL_DestroyTexture(sprites_txt);
     SDL_DestroySurface(sprites_s);
+    SDL_Log("+ cleaned textures/surfaces\n");
 
     TTF_Quit();
 
+    SDL_Log("+ disposed SDL3_TTF\n");
+
     high_score = 0;
 
-    return 0;
+    return feedback;
 }
 
 int DR_Run(){
   
     int feedback = DR_GameLoop();
-    if(feedback == -1){
+    if(feedback == GAME_WINDOW_EVENT_EXIT_CRASH){
         SDL_Log("- something went wrong inside GameLoop!\n");
-        return -1;
+        return GAME_WINDOW_EVENT_EXIT_CRASH;
     }
 
     return feedback;
@@ -114,13 +134,12 @@ int DR_GameLoop(){
 
     // divide one second into FPS intervals
     float interval = 1000.f / (float)FPS;
-    int fps_counter = 0;
     int window_feedback = 0;
 
     while (!done) {
         
         DR_GameLogic();
-        window_feedback = DR_WindowEvents();
+        window_feedback = WindowEvents();
 
         DR_LoopThrottle(&prev_time, interval);
     }
@@ -152,43 +171,57 @@ void DR_GameLogic(){
     DR_Draw();
 }
 
+void DR_DrawText(int x, int y, bool left_centered, char* text_buff, SDL_Color col, TTF_Font* font, SDL_Surface** text_sur){
+
+    *text_sur = TTF_RenderText_Solid(font, text_buff, 0, col);
+    
+    if (*text_sur) {
+        int padding = 10;
+        int current_text_width = ((*text_sur)->w + padding);
+        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, *text_sur);
+        SDL_FRect dst = {x - (left_centered ? -1*padding*2 : current_text_width), padding, (*text_sur)->w, (*text_sur)->h}; 
+        SDL_RenderTexture(renderer, text_texture, NULL, &dst); 
+        SDL_DestroyTexture(text_texture);
+    }
+
+}
 
 void DR_Draw(){
 
     // background
     SDL_RenderTexture(renderer, bg_txt, NULL, NULL);
-
-    char text_buff[128] = "FPS: ";
     TTF_Font* font = TTF_OpenFont("assets/slkscr.ttf", 40);
     if (!font) {
         SDL_Log("Failed to load font slkscr.ttf: %s", SDL_GetError());
         return;
     }
-    int len_var = strlen(text_buff);
-    _itoa_s(FPS, &text_buff[len_var], sizeof(text_buff) - len_var, 10);
-    SDL_Color black = (SDL_Color) {0, 0, 0};
-    SDL_Surface* text_sur = TTF_RenderText_Solid(font, text_buff, 0, black);
     
-    if (text_sur) {
-        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_sur);
-        SDL_FRect dst = {10, 10, text_sur->w, text_sur->h}; 
-        SDL_RenderTexture(renderer, text_texture, NULL, &dst); 
-        SDL_DestroyTexture(text_texture);
-    }
+    //SDL_Surface* text_sur = NULL;
+    char text_buff[128];
+    SDL_Surface* text_sur = NULL;
+    // draw FPS:
+    SDL_Color black = (SDL_Color) {0, 0, 0};
+    snprintf(text_buff, sizeof(text_buff), "FPS: %d", FPS);
+    DR_DrawText(0, 0,true, text_buff,black, font, &text_sur);
+    SDL_DestroySurface(text_sur);
 
     // re-use text buffer
-    strcpy(text_buff, "HI: ");
-    len_var = strlen(text_buff);
-    _itoa_s(high_score, &text_buff[len_var], sizeof(text_buff) - len_var, 10);
-    text_sur = TTF_RenderText_Solid(font, text_buff, 0, black);
+    // draw HI:
+    snprintf(text_buff, sizeof(text_buff), "HI: %d", high_score);
+    DR_DrawText(w_bounds.w, 0, false, text_buff,black,font, &text_sur);
+    int text_width = w_bounds.w - text_sur->w - 20;
+    SDL_DestroySurface(text_sur);
 
-    if (text_sur) {
-        SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_sur);
-        SDL_FRect dst = {w_bounds.w - text_sur->w - 10, 10, text_sur->w, text_sur->h}; 
-        SDL_RenderTexture(renderer, text_texture, NULL, &dst); 
-        SDL_DestroyTexture(text_texture);
-    }
+    SDL_Color red = (SDL_Color) {0xff, 0x33, 0x00};
+    snprintf(text_buff, sizeof(text_buff), "%d", total_high_score);
+    DR_DrawText(text_width,0,false,text_buff,red,font, &text_sur);
+    text_width -=  text_sur->w ;
+    SDL_DestroySurface(text_sur);
 
+    snprintf(text_buff, sizeof(text_buff), "TOTAL HI: ");
+    DR_DrawText(text_width,0,false,text_buff,black,font, &text_sur);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     Dino_Draw();
 
     if(obj_list->size > 0){
@@ -197,7 +230,8 @@ void DR_Draw(){
             ((Obstacle*)curr->data)->draw((Obstacle*)curr->data);
         }
     }
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    
+    // if dead render all current entities with dead screen on top
     if(dead){
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 128, 128, 128, 50);
@@ -223,55 +257,7 @@ void DR_Draw(){
     TTF_CloseFont(font);
 }
 
-int DR_WindowEvents(){
-    SDL_Event event;
-    
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) {
-            done = true;
-            return 1;
-        }
-        
-        if(event.mdevice.type == SDL_EVENT_MOUSE_BUTTON_DOWN && dead){
-            done = true;
-            return 0;
-        }
-    }
-    const bool* state = SDL_GetKeyboardState(NULL);
-    if(!dino->mid_air)
-        dino->ducking = state[SDL_SCANCODE_S];
-    else
-        dino->ducking = false;
-        //SDL_Log("%d\n", dino->ducking);
-    if(dino->ducking)
-        return 0;
 
-    // either force to long jump after holding jump or low jump by tapping space
-    // handling keyboard events manually outside of window event loop for faster response
-    // PI/(float)FPS -> smooth animation. increment angle, so that jump animation lasts aprox. one second
-    
-    if (state[SDL_SCANCODE_SPACE]) {
-
-        jump_down = true; 
-        
-        jump_timer++;
-        if(jump_timer > FPS * 0.12f){
-            dino->long_jump = true;
-            // printf("Key repeat: \n");
-            if(angle == 0)
-                angle += PI/(float)FPS;
-        }
-    }else{
-        if(jump_down && angle == 0)
-            angle += PI/(float)FPS;
-
-        jump_down = false;
-        jump_timer = 0;
-    }
-
-    
-    return 0;
-}
 
 //wrapper
 ULONGLONG millis(){

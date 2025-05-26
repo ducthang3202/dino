@@ -6,7 +6,7 @@
 #define MAX_OBJECTS 10
 
 // grace zone for player hitbox collision
-#define GRACE_ZONE 25
+#define GRACE_ZONE 28
 
 #include "game_object.h"
 #include "ll.h"

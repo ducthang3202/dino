@@ -22,5 +22,7 @@ int main(){
 
     SDL_Quit();
 
+    SDL_Log("+ destroyed window/renderer\n");
+    SDL_Log("+ quit SDL3\n");
     return 0;
 }
