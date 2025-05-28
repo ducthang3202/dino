@@ -62,15 +62,6 @@ bool Level_Update(){
 
 bool Level_DetectCollision(Obstacle* obs){
 
-    /*
-    if((dino->hitbox.x + GRACE_ZONE > obs->hitbox.x && dino->hitbox.x + GRACE_ZONE < obs->hitbox.x + obs->hitbox.w ||
-        dino->hitbox.x + dino->hitbox.w - GRACE_ZONE > obs->hitbox.x && dino->hitbox.x + dino->hitbox.w - GRACE_ZONE < obs->hitbox.x + obs->hitbox.w) &&
-        (dino->hitbox.y + dino->hitbox.h - GRACE_ZONE > obs->hitbox.y && dino->hitbox.y + dino->hitbox.h - GRACE_ZONE < obs->hitbox.y + obs->hitbox.h &&
-        dino->hitbox.y + GRACE_ZONE > obs->hitbox.y && dino->hitbox.y +10 < obs->hitbox.y + obs->hitbox.h)){
-        SDL_Log("collision %d %f %f %f %f\n", obs->type, dino->hitbox.y, obs->hitbox.y, dino->hitbox.h, obs->hitbox.h);
-        return true;
-    }
-    */
     bool right = dino->hitbox.x + dino->hitbox.w - GRACE_ZONE > obs->hitbox.x && dino->hitbox.x + dino->hitbox.w - GRACE_ZONE < obs->hitbox.x + obs->hitbox.w;
     bool bottom = dino->hitbox.y + dino->hitbox.h - GRACE_ZONE > obs->hitbox.y && dino->hitbox.y + dino->hitbox.h - GRACE_ZONE < obs->hitbox.y + obs->hitbox.h;
     bool top = dino->hitbox.y + GRACE_ZONE/2 > obs->hitbox.y && dino->hitbox.y + GRACE_ZONE/2 < obs->hitbox.y + obs->hitbox.h;
@@ -106,7 +97,7 @@ Obstacle* Level_CreatePterodactyl(){
     if (obs == NULL) 
         return NULL; 
 
-    obs->hitbox = (SDL_FRect){ w_bounds.w, ground - DINO_H + 30 - 90 , 100, 85};
+    obs->hitbox = (SDL_FRect){ w_bounds.w, ground - DINO_H + 30 - 85 , 100, 85};
     obs->move = Obstacle_MovePterodactyl;
     obs->draw = Obstacle_DrawPterodactyl;
     obs->type = AIR;

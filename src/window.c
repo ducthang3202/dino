@@ -22,6 +22,8 @@ int CreateGameWindow(){
         SDL_WINDOW_VULKAN                   // renderer
     );
 
+    SDL_SetWindowIcon(window, IMG_Load("assets/DR_Icon.png") );
+
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
         SDL_Quit();
@@ -47,6 +49,7 @@ int WindowEvents(){
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             done = true;
+            run_title_screen = false;
             return GAME_WINDOW_EVENT_EXIT_SAFE;
         }
 

@@ -43,7 +43,7 @@ void Dino_Draw(){
     
     SDL_RenderRect(renderer, &dino->hitbox);
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_FRect grace_box = (SDL_FRect){dino->hitbox.x + GRACE_ZONE, dino->hitbox.y + GRACE_ZONE/2, dino->hitbox.w - GRACE_ZONE * 2, dino->hitbox.h - GRACE_ZONE*1.5f };
+    SDL_FRect grace_box = (SDL_FRect){dino->hitbox.x + GRACE_ZONE, dino->hitbox.y + GRACE_ZONE / 2, dino->hitbox.w - GRACE_ZONE * 2, dino->hitbox.h - GRACE_ZONE * 1.5f };
     SDL_RenderRect(renderer, &grace_box);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }

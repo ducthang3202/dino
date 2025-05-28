@@ -30,7 +30,6 @@ typedef struct{
 }Dino;
 
 #include "window.h"
-#include "level.h"
 
 #define DINO_W 88
 #define DINO_H 97

@@ -1,4 +1,3 @@
-#include "../header/window.h"
 #include "../header/dino_rush.h"
 
 

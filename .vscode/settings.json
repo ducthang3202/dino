@@ -7,7 +7,8 @@
         "cmath": "c",
         "sdl_image.h": "c",
         "stdbool.h": "c",
-        "level.h": "c"
+        "level.h": "c",
+        "xlocale": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
