@@ -8,7 +8,7 @@ float angle = 0;
 void Dino_Draw(){
 
     int ducking_offset_y = 0;
-    if(dino_animation_frame_counter < FPS / 4){
+    if(dino_animation_frame_counter < actual_fps / 4){
         dino_animation_frame_counter++;
     }else{
         //printf("anim %d\n", dino_running_animation);
@@ -65,7 +65,7 @@ void Obstacle_DrawCactus(Obstacle* self){
 void Obstacle_DrawPterodactyl(Obstacle* self){
 
     self->animation_counter++;
-    if(self->animation_counter > FPS/2){
+    if(self->animation_counter > actual_fps/2){
         self->animation_counter = 0;
         self->sprite = (self->sprite + 1) % 2;
     }
@@ -88,14 +88,14 @@ void Dino_Move(){
 
         int amplitude = 0;
         if(dino->long_jump){
-            printf("high jump: \n");
+          //  printf("high jump: \n");
             amplitude = high_jump;
         }else{
             amplitude = low_jump;
         }
         
         dino->hitbox.y -= sin(angle) * amplitude;
-        angle += PI/((float)FPS*1.1f);
+        angle += PI/(actual_fps);
         dino->mid_air = true;
     }
 
@@ -126,8 +126,9 @@ void Dino_PassedObstacle(Obstacle* obs){
 }
 
 void Obstacle_MoveCactus(Obstacle* self){
-    self->hitbox.x -= 1.7f;
+    self->hitbox.x -= 244.f/actual_fps;
 }
 void Obstacle_MovePterodactyl(Obstacle* self){
-    self->hitbox.x -= 2.2f;
+
+    self->hitbox.x -= 304.f/actual_fps;
 }

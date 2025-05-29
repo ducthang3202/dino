@@ -16,7 +16,7 @@ void Level_Init(){
 }
 
 void Level_StartTimer(){
-    delay = r(1500,3000);
+    delay = r(2000,3500);
     timer = millis();
     timer_running = true;
 }

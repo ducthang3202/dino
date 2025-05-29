@@ -8,76 +8,155 @@ TTF_Font* font = NULL;
 bool done = false;
 bool dead = false;
 
-int retry_animation_counter = 0;
-int retry_animation = 0;
 int high_score = 0, total_high_score = 0;
 bool show_hitbox = false;
 bool long_jump = false;
 bool run_title_screen = true;
+float actual_fps = DESIRED_FPS;
 
 int DR_Run();
 int DR_GameLoop();
 int DR_Init();
-Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, const char* text_fmt, ... );
-void DR_LoopThrottle(ULONGLONG* prev_time, float interval);
+Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, char* buff );
+void DR_LoopThrottle();
 void DR_GameLogic();
 void DR_Draw();
 void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* text_sur);
+void DR_ShowFPS();
 
 int DR_TitleScreen(){
+ 
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-    TTF_SetFontSize(font, 80);
-
-    ULONGLONG prev_time = millis();
-    // divide one second into FPS intervals
-    float interval = 1000.f / (float)FPS;
-    int feedback = 0, flashing_animation_counter = 0, y_pos = 0;
-    float alpha = 0;
+    float feedback = 0, flashing_animation_counter = 0, y_pos = 0, end_controls_x = 0, end_logo_y = 0, end_press_any_key_y = 0, delay = 0;
+    float alpha_logo = 0, alpha_press_start = 0;
+    bool animation_finish = false, start_end_sequence = false;
+    GameWindowEvent gwe = (GameWindowEvent) { false, SDL_SCANCODE_SPACE};
 
     while(run_title_screen){
+        
         // regulation of title animation
         // 1.fading 
         // 2.moving to the top
         // 3.flashing
-        if(alpha < 255.f && flashing_animation_counter == 0)
-            alpha += 0.5f;
+        if(alpha_logo < 255.f && flashing_animation_counter == 0)
+            alpha_logo += 160.f/actual_fps;
         else if(w_bounds.h/2 + y_pos > w_bounds.h / 8 && flashing_animation_counter == 0){
-            alpha = 255.f;
-            y_pos--;
+            alpha_logo = 255.f;
+            y_pos -= 160.f/actual_fps;
         }
-        else if(flashing_animation_counter < FPS){
+        else if(flashing_animation_counter < actual_fps){
             flashing_animation_counter++;
-            
         }else{
-            // -1 to correct the sign bit
-            // float is casted to Uint8
-            // ~ treats operand(alpha) as 32 signed int 
-            // then all 32 bits are inverted. 0xffffff00
-            // 0xffffff00 is not positive -> the most significant bit is 1, which marks it as a negative number in twos complement.
-            // 0xffffff00 -> 0x000000ff -> +1 -> -0x00000100 = -256
-            // to prevent overflow from + 1 from 255 -> 256 subtract 1 from alpha in the beginning
-            
-            alpha = ~(Uint8)(alpha-1);
+            alpha_press_start = 255.f - alpha_press_start;
             flashing_animation_counter = 1;
+            animation_finish = true;
         }
         
-
-        printf("%f %d\n", alpha, flashing_animation_counter);
         SDL_RenderTexture(renderer, bg_txt, NULL, NULL);
 
-        DR_DrawText(w_bounds.w/2, w_bounds.h/2 + y_pos, RIGHT | CENTER_Y, (SDL_Color) {0xff, 0x33, 0x00, (Uint8)alpha}, "Dino");
-        DR_DrawText(w_bounds.w/2, w_bounds.h/2 + y_pos, LEFT | CENTER_Y, (SDL_Color) {255, 0, 0, (Uint8)alpha}, "Rush");
+        TTF_SetFontSize(font, 80);
+        DR_DrawText(w_bounds.w/2, w_bounds.h/2 + y_pos + end_logo_y, RIGHT | CENTER_Y, (SDL_Color) {0xff, 0x33, 0x00, (Uint8)alpha_logo}, "Dino");
+        DR_DrawText(w_bounds.w/2, w_bounds.h/2 + y_pos+ end_logo_y, LEFT | CENTER_Y, (SDL_Color) {255, 0, 0, (Uint8)alpha_logo}, "Rush");
 
-        SDL_RenderPresent(renderer);
+        if(animation_finish){
+            
+            //TTF_SetFontSize(font, 60);
 
-        feedback = WindowEvents();
-        DR_LoopThrottle(&prev_time, interval);
+            Bounds b = DR_DrawText(end_controls_x, w_bounds.h/2 - w_bounds.h/6, LEFT | CENTER_Y, (SDL_Color) {128, 128, 128, 255}, "Controls:");
+          //  TTF_SetFontSize(font, 40);
+            Bounds txt_b = DR_DrawText(end_controls_x, w_bounds.h/2 - w_bounds.h/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Hold [SPACE] to jump high");
+            b.w = txt_b.w;
+            txt_b.h += DR_DrawText(end_controls_x, w_bounds.h/2 - w_bounds.h/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [SPACE] to jump low").h;
+            txt_b.h += DR_DrawText(end_controls_x, w_bounds.h/2 - w_bounds.h/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [S] to duck").h;
+            txt_b.h += DR_DrawText(end_controls_x, w_bounds.h/2 - w_bounds.h/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [H] to show every Hitbox").h;
+
+          //  TTF_SetFontSize(font, 50);
+            Bounds txt_pak = DR_DrawText(w_bounds.w/2 - 20, w_bounds.h - w_bounds.h/5 + end_press_any_key_y, CENTER, (SDL_Color) {0x2E, 0x60, 0x21, (Uint8)alpha_press_start}, "Press SPACE Key");
+
+            // get input after animation is finished
+            // once SPACE is pressed hold animation via || start_end_sequence
+            // until loop is closed
+            if(gwe.key_pressed || start_end_sequence){
+                start_end_sequence = true;
+
+                // braucht am längsten
+                if(end_controls_x > -txt_b.w - 50){
+                    end_controls_x -= 280.f/actual_fps;
+                }else
+                    run_title_screen = false;
+                if(w_bounds.h - w_bounds.h/5 + end_press_any_key_y < w_bounds.h + txt_pak.h )
+                    end_press_any_key_y += 160.f/actual_fps;
+                if(w_bounds.h/2 - w_bounds.h/6 + end_logo_y > -b.h)
+                    end_logo_y -= 160.f/actual_fps;
+            }
+            delay++;
+        }
+
+        feedback = WindowEvents(&gwe);
+
+        DR_ShowFPS();
         
+        if(!animation_finish || delay > 10)
+            SDL_RenderPresent(renderer);
+
+        DR_LoopThrottle();
     }
 
     TTF_SetFontSize(font, 40);
 
     return feedback;
+}
+
+void DR_ShowFPS(){
+    
+    // static -> declared once in static memory (.bss section)
+    // every call reuses same memory
+    // value only assigned once
+    static Uint64 prev_time_true_fps = 0;
+    static int true_fps_counter = 0;
+    static int true_fps = 0;
+    static bool optimizing_fps = false;
+    static int wait_changes = 0;
+
+    Uint64 ticks_now = SDL_GetPerformanceCounter();
+    true_fps_counter++;
+  //  SDL_Log("%llu \n", millis() - prev_time_true_fps);
+    if(ticks_now - prev_time_true_fps > SDL_GetPerformanceFrequency()){
+        prev_time_true_fps = ticks_now; 
+
+#ifdef ALLOW_FPS_OPTIMIZING
+        if(wait_changes < 2){
+            wait_changes++;
+        }  
+        else{
+            optimizing_fps = false;
+            if(true_fps_counter < DESIRED_FPS - 10 && true_fps_counter > DESIRED_FPS - DESIRED_FPS*0.2f){
+                actual_fps += DESIRED_FPS - 10 - true_fps_counter;
+                optimizing_fps = true;
+            }
+
+            if(true_fps_counter > DESIRED_FPS + 10 && true_fps_counter < DESIRED_FPS + DESIRED_FPS*0.2f){
+                optimizing_fps = true;
+                actual_fps -= 5;
+            }
+            wait_changes = 0;
+        }
+#endif       
+        true_fps = true_fps_counter;
+        true_fps_counter = 0; 
+    }
+
+    TTF_SetFontSize(font, 40);
+
+    char buff[128];
+    snprintf(buff, sizeof(buff), "FPS: %d", true_fps);
+    Bounds b = DR_DrawText(0, 0, LEFT, (SDL_Color) {0, 0, 0, 255} ,buff);   
+  //  if(optimizing_fps){
+ //       snprintf(buff, sizeof(buff), "OPTIMZING" );
+  //      DR_DrawText(0, b.h, LEFT, (SDL_Color) {0, 255, 0, 200} ,buff);   
+  //  }
+
 }
 
 int DR_Init(){
@@ -139,13 +218,6 @@ int DR_Start(){
         SDL_Log("- couldnt init Game!\n");
         return -1;
     }
-    feedback = DR_TitleScreen();
-
-    if(feedback != 0){
-        SDL_Log("- couldnt init Game!\n");
-        return feedback;
-    }
-
 
     // high score file init
     FILE* high_score_file = NULL;
@@ -222,18 +294,19 @@ int DR_Run(){
 
 int DR_GameLoop(){
 
-    ULONGLONG prev_time = millis();
-
-    // divide one second into FPS intervals
-    float interval = 1000.f / (float)FPS;
+ 
     int window_feedback = 0;
 
     while (!done) {
         
         DR_GameLogic();
-        window_feedback = WindowEvents();
+        GameWindowEvent gwe = {0, 0};
+        window_feedback = WindowEvents(&gwe);
 
-        DR_LoopThrottle(&prev_time, interval);
+        DR_ShowFPS();
+        SDL_RenderPresent(renderer);
+        DR_LoopThrottle();
+
     }
 
     return window_feedback;
@@ -241,16 +314,21 @@ int DR_GameLoop(){
 
 
 
-void DR_LoopThrottle(ULONGLONG* prev_time, float interval){
+void DR_LoopThrottle(){
 
-    ULONGLONG time = millis();
-    ULONGLONG time_passed = time - *prev_time;
+    static Uint64 target = 0;
+    static double interval = 1.f / DESIRED_FPS;  
+    interval = 1.f / actual_fps;
 
-    //if loop cycle went too fast for one interval -> sleep for the remainder time
-    if(time_passed < interval)
-        SDL_Delay(interval - time_passed);
-    
-    *prev_time = time;
+    Uint64 now = SDL_GetPerformanceCounter();
+    //if loop cycle went too fast(counter is smaller than previous defined target delta time) for one interval -> sleep for the remainder time
+    while (now < target) {
+        // call SDL_Delay(0) to yield the thread
+        SDL_Delay(0);
+        now = SDL_GetPerformanceCounter();
+    }  
+    target = now + (Uint64)(interval * SDL_GetPerformanceFrequency()); 
+
 }
 
 void DR_GameLogic(){
@@ -268,13 +346,16 @@ void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* 
     int padding = 10, x_adjust = 0, y_adjust = 0;
     SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_sur);
 
+    //by default sdl assumes you want fast, opaque rendering -> unless explicitly spcified otherwise.
+    SDL_SetTextureAlphaMod(text_texture, col.a); 
+
     if(layout & TOP)
         y_adjust = -text_sur->h;
     if(layout & BOTTOM)
         y_adjust = text_sur->h;
 
     if(layout & RIGHT)
-        x_adjust = -text_sur->w;
+        x_adjust = -text_sur->w - padding*2;
 
     if(layout & CENTER){
         x_adjust = -text_sur->w/2;
@@ -291,17 +372,7 @@ void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* 
     SDL_DestroyTexture(text_texture);
 }
 
-Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, const char* text_fmt, ... ){
-
-    char buff[128];
-
-    if(sizeof(text_fmt) > 100)
-        return (Bounds){0, 0}; 
-
-    va_list args;
-    va_start(args, text_fmt);            
-    vsnprintf(buff, sizeof(buff), text_fmt, args);
-    va_end(args);                      
+Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, char* buff){
 
     SDL_Surface* text_sur = TTF_RenderText_Blended(font, buff, 0, col);
     
@@ -321,33 +392,17 @@ void DR_Draw(){
     // background
     SDL_RenderTexture(renderer, bg_txt, NULL, NULL);
 
-    //SDL_Surface* text_sur = NULL;
-    char text_buff[128];
-    SDL_Surface* text_sur = NULL;
-    // draw FPS:
-    /*
-    SDL_Color black = (SDL_Color) {0, 0, 0};
-    snprintf(text_buff, sizeof(text_buff), "FPS: %d", FPS);
-    DR_DrawText(0, 0, LEFT, text_buff,black, &text_sur);
-    SDL_DestroySurface(text_sur);
+    char buff[128];
 
-    //DR_DrawText(0, 0, LEFT, (SDL_Color) {0, 0, 0}, "FPS: %d");
-    // re-use text buffer
-    // draw HI:
-    snprintf(text_buff, sizeof(text_buff), "HI: %d", high_score);
-    DR_DrawText(w_bounds.w, 0, RIGHT, text_buff,black, &text_sur);
-    int text_width = w_bounds.w - text_sur->w - 20;
-    SDL_DestroySurface(text_sur);
+    snprintf(buff, sizeof(buff), "HI: %d", high_score);
+    int text_width = w_bounds.w - DR_DrawText(w_bounds.w, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,buff).w - 20;
 
-    SDL_Color red = (SDL_Color) {0xff, 0x33, 0x00};
-    snprintf(text_buff, sizeof(text_buff), "%d", total_high_score);
-    DR_DrawText(text_width, 0, RIGHT,text_buff,red, &text_sur);
-    text_width -=  text_sur->w ;
-    SDL_DestroySurface(text_sur);
+    snprintf(buff, sizeof(buff), "%d", total_high_score);
+    text_width -= DR_DrawText(text_width, 0, RIGHT, (SDL_Color) {0xff, 0x33, 0x00, 0xff} ,buff).w;
 
-    snprintf(text_buff, sizeof(text_buff), "TOTAL HI: ");
-    DR_DrawText(text_width, 0, RIGHT,text_buff,black, &text_sur);
-*/
+    snprintf(buff, sizeof(buff), "TOTAL HI: ");
+    DR_DrawText(text_width, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,"TOTAL HI: ");
+
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     Dino_Draw();
 
@@ -360,12 +415,14 @@ void DR_Draw(){
     
     // if dead render all current entities with dead screen on top
     if(dead){
+        static float retry_animation_counter = 0;
+        static int retry_animation = 0;
         SDL_SetRenderDrawColor(renderer, 128, 128, 128, 50);
         SDL_FRect screen = (SDL_FRect){0,0,w_bounds.w, w_bounds.h};
         SDL_RenderFillRect(renderer, &screen);
 
-        retry_animation_counter++;
-        if(retry_animation_counter > FPS / 3){
+        retry_animation_counter += 160.f/actual_fps;
+        if(retry_animation_counter > actual_fps / 3){
             retry_animation = (retry_animation + 1) % 4;
             retry_animation_counter = 0;
         }
@@ -376,28 +433,18 @@ void DR_Draw(){
 
        // SDL_RenderRect(renderer,& retry_r);
     }
-    // present buffer to screen
-    SDL_RenderPresent(renderer);
-    SDL_DestroySurface(text_sur);
-
 }
 
 
 
 //wrapper
-ULONGLONG millis(){
+uint64_t millis(){
+
 #ifdef WIN
     return GetTickCount64();
-#endif
-#ifdef MAC
+#else
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts); 
-    return ts.tv_nsec/1000000;
+    return ts.tv_nsec;
 #endif
-#ifdef LINUX
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts); 
-    return ts.tv_nsec/1000000;
-#endif
-
 }

@@ -3,7 +3,10 @@
 #include <stdio.h>
 #include "dino_rush.h"
 
-#define FPS 120
+#ifndef DESIRED_FPS
+#define DESIRED_FPS 120
+#endif
+
 #define PI M_PI
 #define GAME_WINDOW_EVENT_NOERR 0
 #define GAME_WINDOW_EVENT_EXIT_SAFE 1
@@ -13,6 +16,11 @@ typedef struct Bounds{
     int w;
     int h;
 }Bounds;
+
+typedef struct GameWindowEvent{
+    bool key_pressed;
+    SDL_Keycode key;
+}GameWindowEvent;
 
 typedef enum {
     LEFT     = 0x0000001,
@@ -30,5 +38,5 @@ extern bool done;
 extern Bounds w_bounds;
 extern bool run_title_screen;
 
-int CreateGameWindow();
-int WindowEvents();
+int CreateGameWindow(SDL_Window* window);
+int WindowEvents(GameWindowEvent* gwe);

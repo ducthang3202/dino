@@ -1,13 +1,12 @@
 #include "../header/window.h"
 
 SDL_Renderer* renderer = NULL;
-SDL_Window* window = NULL;
-Bounds w_bounds = {1000, 600};
 
+Bounds w_bounds = {1000, 600};
 int jump_timer = 0;
 bool jump_down = false;
 
-int CreateGameWindow(){
+int CreateGameWindow(SDL_Window* window){
 
     if(!SDL_Init(SDL_INIT_VIDEO)){
 
@@ -43,7 +42,7 @@ int CreateGameWindow(){
     return 0;
 }
 
-int WindowEvents(){
+int WindowEvents(GameWindowEvent* gwe){
     SDL_Event event;
     
     while (SDL_PollEvent(&event)) {
@@ -58,16 +57,23 @@ int WindowEvents(){
             return GAME_WINDOW_EVENT_NOERR;
         }
 
-        if (event.key.down && event.key.key == SDLK_H && !event.key.repeat) 
-            if (event.key.key & (SDLK_LCTRL)) 
-                show_hitbox = !show_hitbox;
+        // key press
+        if (event.key.down && !event.key.repeat) {
+            if(event.key.key == SDLK_H )
+                if (event.key.key & (SDLK_LCTRL)) 
+                    show_hitbox = !show_hitbox;
+
+        }
+            
             
     }
+    const bool* state = SDL_GetKeyboardState(NULL);
+    gwe->key_pressed = state[gwe->key];
 
     if(dead)
         return GAME_WINDOW_EVENT_NOERR;
 
-    const bool* state = SDL_GetKeyboardState(NULL);
+
 
     if(!dino->mid_air)
         dino->ducking = state[SDL_SCANCODE_S];
@@ -86,15 +92,15 @@ int WindowEvents(){
         jump_down = true; 
         
         jump_timer++;
-        if(jump_timer > FPS * 0.12f){
+        if(jump_timer > actual_fps * 0.12f){
             dino->long_jump = true;
             // printf("Key repeat: \n");
             if(angle == 0)
-                angle += PI/(float)FPS;
+                angle += PI/actual_fps;
         }
     }else{
         if(jump_down && angle == 0)
-            angle += PI/(float)FPS;
+            angle += PI/actual_fps;
 
         jump_down = false;
         jump_timer = 0;
