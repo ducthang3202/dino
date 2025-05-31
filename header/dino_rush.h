@@ -14,14 +14,9 @@
 #include "ll.h"
 #include "level.h"
 
-extern Dino* dino;
 extern int high_score;
-extern float angle;
 extern bool show_hitbox;
 extern float actual_fps;
 
 int DR_Start();
-int DR_Init();
-ULONGLONG millis();
-int DR_TitleScreen();
-
+uint64_t millis();

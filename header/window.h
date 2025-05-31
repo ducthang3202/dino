@@ -11,16 +11,15 @@
 #define GAME_WINDOW_EVENT_NOERR 0
 #define GAME_WINDOW_EVENT_EXIT_SAFE 1
 #define GAME_WINDOW_EVENT_EXIT_CRASH -1
+#define GAME_WINDOW_WIDTH 1000
+#define GAME_WINDOW_HEIGHT 600
+#define GROUND GAME_WINDOW_HEIGHT - GAME_WINDOW_HEIGHT /10
 
 typedef struct Bounds{
     int w;
     int h;
 }Bounds;
 
-typedef struct GameWindowEvent{
-    bool key_pressed;
-    SDL_Keycode key;
-}GameWindowEvent;
 
 typedef enum {
     LEFT     = 0x0000001,
@@ -33,10 +32,6 @@ typedef enum {
 }TextLayout;
 
 extern SDL_Renderer* renderer;
-extern SDL_Window* window;
-extern bool done;
-extern Bounds w_bounds;
-extern bool run_title_screen;
 
 int CreateGameWindow(SDL_Window* window);
-int WindowEvents(GameWindowEvent* gwe);
+int WindowEvents(Dino* dino);

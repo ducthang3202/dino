@@ -11,18 +11,8 @@
 #include "game_object.h"
 #include "ll.h"
 
-extern unsigned long long millis();
-extern int r(int min, int max);
-extern int obj_count;
-extern float ground;
+extern uint64_t millis();
 
-// linked list for quick removal of elements / searching
-extern LinkedList* obj_list;
-
-void Level_Init();
-bool Level_Update();
-bool Level_DetectCollision(Obstacle* obs);
-Obstacle* Level_CreateCactus();
-Obstacle* Level_CreatePterodactyl();
-void Level_RemoveObstacle(Obstacle* o);
+void Level_Update(LinkedList* obj_list, Dino* dino);
+void Level_Init(LinkedList* obj_list);
 int r(int min, int max);

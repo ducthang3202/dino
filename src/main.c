@@ -8,30 +8,14 @@ int main(){
         return -1;
     }
     SDL_Window* window = NULL;
-    SDL_Renderer* renderer = NULL;
+
     if( CreateGameWindow(window) != 0){
         return -1;
     }
-    if(DR_Init() != 0){
-        SDL_Log("- couldnt init Game!\n");
-        return -1;
-    }
 
-    int feedback = DR_TitleScreen();
+    int feedback = 0;
 
-    if(feedback == -1){
-        SDL_Log("- Titlescreen crashed!\n");
-        return feedback;
-    }
-    if(feedback == 1){
-        SDL_Log("+ closed Game!\n");
-        return feedback;
-    }
-
-    feedback = DR_Start();
-    while(feedback == 0){
-        feedback = DR_Start();
-
+    while((feedback = DR_Start()) == 0){
         if(feedback == 1){
             // window closed
         }

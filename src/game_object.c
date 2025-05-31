@@ -1,11 +1,11 @@
 #include "../header/game_object.h"
 
+void Dino_Draw(GameObject* go){
 
-int dino_animation_frame_counter = 0;
-bool dino_running_animation = true;
-float angle = 0;
+    Dino* dino = (Dino*)go->childclass_ref;
 
-void Dino_Draw(){
+    static int dino_animation_frame_counter = 0;
+    static bool dino_running_animation = true;
 
     int ducking_offset_y = 0;
     if(dino_animation_frame_counter < actual_fps / 4){
@@ -17,74 +17,80 @@ void Dino_Draw(){
         dino_animation_frame_counter = 0;
     }
 
-    int sprite_offset = dino->hitbox.w * ((dino_running_animation + 2) * !dino->mid_air)  * !dead + dead * 5 * dino->hitbox.w;
+    int sprite_offset = go->hitbox.w * ((dino_running_animation + 2) * !dino->mid_air)  * !dino->dead + dino->dead * 5 * go->hitbox.w;
     if(dino->ducking){
         ducking_offset_y = 35;
         sprite_offset = 527 + 118 * dino_running_animation;
-        dino->hitbox.y = ground - DINO_H + 30;
-        dino->hitbox.h = 60;
-        dino->hitbox.w = 118;
+        go->hitbox.y = GROUND - DINO_H + 30;
+        go->hitbox.h = 60;
+        go->hitbox.w = 118;
 
     }else if(!dino->mid_air){
-        dino->hitbox.y = ground - DINO_H;
-        dino->hitbox.h = DINO_H;
-        dino->hitbox.w = DINO_W;
+        go->hitbox.y = GROUND - DINO_H;
+        go->hitbox.h = DINO_H;
+        go->hitbox.w = DINO_W;
     }
     
     // mathematic equation is based on the order of sprites in base64.bmp
     // dino_on_ground is either true or false, anulling walking animation when mid air
     // if dino is dead (dead = 1) anull all other animation while index dead dino sprite (dead * 5)
 
-    SDL_FRect dino_r_src = { 1678 + sprite_offset, ducking_offset_y , dino->hitbox.w , dino->hitbox.h };
-    SDL_RenderTexture(renderer, sprites_txt, &dino_r_src, &dino->hitbox);
+    SDL_FRect dino_r_src = { 1678 + sprite_offset, ducking_offset_y , go->hitbox.w , go->hitbox.h };
+    SDL_RenderTexture(renderer, go->sprites_txt, &dino_r_src, &go->hitbox);
   //  SDL_Log("%d\n", 1678 + sprite_offset);
     if(!show_hitbox)
         return;
-    
-    SDL_RenderRect(renderer, &dino->hitbox);
+    //
+    SDL_RenderRect(renderer, &go->hitbox);
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_FRect grace_box = (SDL_FRect){dino->hitbox.x + GRACE_ZONE, dino->hitbox.y + GRACE_ZONE / 2, dino->hitbox.w - GRACE_ZONE * 2, dino->hitbox.h - GRACE_ZONE * 1.5f };
+    SDL_FRect grace_box = (SDL_FRect){go->hitbox.x + GRACE_ZONE, go->hitbox.y + GRACE_ZONE / 2, go->hitbox.w - GRACE_ZONE * 2, go->hitbox.h - GRACE_ZONE * 1.5f };
     SDL_RenderRect(renderer, &grace_box);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }
 
-void Obstacle_DrawCactus(Obstacle* self){
+void Obstacle_DrawCactus(GameObject* go){
 
+    Obstacle* self = (Obstacle*)go->childclass_ref;
     // sprite optimization
     int g = 0;
     if(self->sprite > 2)
         g = 2;
-    SDL_FRect cactus_r_src = { 653 + CACTUS_W * self->sprite + g, 0 , self->hitbox.w , self->hitbox.h };
-    SDL_RenderTexture(renderer, sprites_txt, &cactus_r_src, &self->hitbox);
+    SDL_FRect cactus_r_src = { 653 + CACTUS_W * self->sprite + g, 0 , self->go.hitbox.w , self->go.hitbox.h };
+    SDL_RenderTexture(renderer, go->sprites_txt, &cactus_r_src, &self->go.hitbox);
 
     if(!show_hitbox)
         return;
 
-    SDL_RenderRect(renderer, &self->hitbox);
+    SDL_RenderRect(renderer, &self->go.hitbox);
 }
-void Obstacle_DrawPterodactyl(Obstacle* self){
+void Obstacle_DrawPterodactyl(GameObject* go){
 
+    Obstacle* self = (Obstacle*)go->childclass_ref;
     self->animation_counter++;
+
     if(self->animation_counter > actual_fps/2){
         self->animation_counter = 0;
         self->sprite = (self->sprite + 1) % 2;
     }
+
     SDL_FRect pt_r_src = { 260 + 90 * self->sprite, 0 , 90, 85 };
-    SDL_FRect pt_r = { self->hitbox.x, self->hitbox.y , 90, 85 };
-    SDL_RenderTexture(renderer, sprites_txt, &pt_r_src, &pt_r);
+    SDL_FRect pt_r = { go->hitbox.x, go->hitbox.y , 90, 85 };
+    SDL_RenderTexture(renderer, go->sprites_txt, &pt_r_src, &pt_r);
 
     if(!show_hitbox)
         return;
         
     SDL_RenderRect(renderer, &pt_r);
 }
-void Dino_Move(){
-    dino->hitbox.y = dino->ducking ? ground - DINO_H + 30 : ground - DINO_H;
+void Dino_Move(GameObject* go){
 
-    if(angle != 0 && angle < PI){
+    Dino* dino = (Dino*)go->childclass_ref;
+    dino->go.hitbox.y = dino->ducking ? GROUND - DINO_H + 30 : GROUND - DINO_H;
 
-        float high_jump = w_bounds.h / 3 + w_bounds.h / 10;
-        float low_jump = w_bounds.h / 6;
+    if(dino->jump_angle != 0 && dino->jump_angle < PI){
+
+        float high_jump = GAME_WINDOW_HEIGHT / 3 + GAME_WINDOW_HEIGHT / 10;
+        float low_jump = GAME_WINDOW_HEIGHT / 6;
 
         int amplitude = 0;
         if(dino->long_jump){
@@ -94,13 +100,13 @@ void Dino_Move(){
             amplitude = low_jump;
         }
         
-        dino->hitbox.y -= sin(angle) * amplitude;
-        angle += PI/(actual_fps);
-        dino->mid_air = true;
+        dino->go.hitbox.y -= sin(dino->jump_angle) * amplitude;
+        dino->jump_angle += PI/(actual_fps);
+        dino->mid_air = true;///
     }
 
-    if(angle >= PI){
-        angle = 0;
+    if(dino->jump_angle >= PI){
+        dino->jump_angle = 0;
         dino->long_jump = false;
         dino->mid_air = false;
 
@@ -112,9 +118,9 @@ void Dino_Move(){
     }
 }
 
-void Dino_PassedObstacle(Obstacle* obs){
-    if((dino->hitbox.x + GRACE_ZONE > obs->hitbox.x && dino->hitbox.x + GRACE_ZONE < obs->hitbox.x + obs->hitbox.w ||
-        dino->hitbox.x + dino->hitbox.w - GRACE_ZONE > obs->hitbox.x && dino->hitbox.x + dino->hitbox.w - GRACE_ZONE < obs->hitbox.x + obs->hitbox.w)){
+void Dino_PassedObstacle(Dino* dino, Obstacle* obs){
+    if((dino->go.hitbox.x + GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w ||
+        dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w)){
             if(!dino->long_jump)
                 dino->reward = 20;
             else if(obs->type == AIR)
@@ -125,10 +131,13 @@ void Dino_PassedObstacle(Obstacle* obs){
 
 }
 
-void Obstacle_MoveCactus(Obstacle* self){
-    self->hitbox.x -= 244.f/actual_fps;
-}
-void Obstacle_MovePterodactyl(Obstacle* self){
+void Obstacle_MoveCactus(GameObject* go){
 
-    self->hitbox.x -= 304.f/actual_fps;
+    Obstacle* self = (Obstacle*)go->childclass_ref;
+    self->go.hitbox.x -= 244.f/actual_fps;
+}
+void Obstacle_MovePterodactyl(GameObject* go){
+
+    Obstacle* self = (Obstacle*)go->childclass_ref;
+    self->go.hitbox.x -= 304.f/actual_fps;
 }

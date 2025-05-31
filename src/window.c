@@ -2,9 +2,6 @@
 
 SDL_Renderer* renderer = NULL;
 
-Bounds w_bounds = {1000, 600};
-int jump_timer = 0;
-bool jump_down = false;
 
 int CreateGameWindow(SDL_Window* window){
 
@@ -16,8 +13,8 @@ int CreateGameWindow(SDL_Window* window){
 
     window = SDL_CreateWindow(
         "DinoRush",                         // window title
-        1000,                               // width, in pixels
-        600,                                // height, in pixels
+        GAME_WINDOW_WIDTH,                               // width, in pixels
+        GAME_WINDOW_HEIGHT,                                // height, in pixels
         SDL_WINDOW_VULKAN                   // renderer
     );
 
@@ -42,22 +39,16 @@ int CreateGameWindow(SDL_Window* window){
     return 0;
 }
 
-int WindowEvents(GameWindowEvent* gwe){
+int WindowEvents(Dino* dino){
     SDL_Event event;
     
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) {
-            done = true;
-            run_title_screen = false;
+        if (event.type == SDL_EVENT_QUIT) 
             return GAME_WINDOW_EVENT_EXIT_SAFE;
-        }
-
-        if(event.mdevice.type == SDL_EVENT_MOUSE_BUTTON_DOWN && dead){
-            done = true;
+        
+        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && dino->dead)
             return GAME_WINDOW_EVENT_NOERR;
-        }
 
-        // key press
         if (event.key.down && !event.key.repeat) {
             if(event.key.key == SDLK_H )
                 if (event.key.key & (SDLK_LCTRL)) 
@@ -68,9 +59,8 @@ int WindowEvents(GameWindowEvent* gwe){
             
     }
     const bool* state = SDL_GetKeyboardState(NULL);
-    gwe->key_pressed = state[gwe->key];
 
-    if(dead)
+    if(dino->dead)
         return GAME_WINDOW_EVENT_NOERR;
 
 
@@ -87,6 +77,8 @@ int WindowEvents(GameWindowEvent* gwe){
     // handling keyboard events manually outside of window event loop for faster response
     // PI/(float)FPS -> smooth animation. increment angle, so that jump animation lasts aprox. one second
     
+    static int jump_timer = 0;
+    static bool jump_down = false;
     if (state[SDL_SCANCODE_SPACE]) {
 
         jump_down = true; 
@@ -94,13 +86,12 @@ int WindowEvents(GameWindowEvent* gwe){
         jump_timer++;
         if(jump_timer > actual_fps * 0.12f){
             dino->long_jump = true;
-            // printf("Key repeat: \n");
-            if(angle == 0)
-                angle += PI/actual_fps;
+            if(dino->jump_angle == 0)
+                dino->jump_angle += PI/actual_fps;
         }
     }else{
-        if(jump_down && angle == 0)
-            angle += PI/actual_fps;
+        if(jump_down && dino->jump_angle == 0)
+            dino->jump_angle += PI/actual_fps;
 
         jump_down = false;
         jump_timer = 0;
