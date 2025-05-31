@@ -79,11 +79,18 @@ bool LL_Clean(LinkedList* ll){
 
 LinkedList* LL_Create(){
     Node* n = malloc(sizeof(Node));
+
+    if(!n)
+        return NULL;
     n->next = n;
     n->prev = n;
     n->data = NULL;
 
     LinkedList* ll = malloc(sizeof(LinkedList));
+
+    if(!n)
+        return NULL;
+        
     ll->curr = NULL;
     ll->NIL = n;
     ll->size = 0;

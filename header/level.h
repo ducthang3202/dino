@@ -14,5 +14,3 @@
 extern uint64_t millis();
 
 void Level_Update(LinkedList* obj_list, Dino* dino);
-void Level_Init(LinkedList* obj_list);
-int r(int min, int max);

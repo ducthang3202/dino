@@ -1,20 +1,67 @@
 #include "../header/level.h"
 
 
-int rand_air_spawn = 0;
+int r(int min, int max) {
+    return rand() % (max - min + 1) + min;
+}
+
+bool Level_DetectCollision(Dino* dino, Obstacle* obs){
+
+    bool right = dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w;
+    bool bottom = dino->go.hitbox.y + dino->go.hitbox.h - GRACE_ZONE > obs->go.hitbox.y && dino->go.hitbox.y + dino->go.hitbox.h - GRACE_ZONE < obs->go.hitbox.y + obs->go.hitbox.h;
+    bool top = dino->go.hitbox.y + GRACE_ZONE/2 > obs->go.hitbox.y && dino->go.hitbox.y + GRACE_ZONE/2 < obs->go.hitbox.y + obs->go.hitbox.h;
+    bool left = dino->go.hitbox.x + GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w;
+
+    if((right || left) && (top || bottom) ){
+        SDL_Log("collision %d right: %d bottom: %d top: %d dino top: %f obstop: %f left: %d\n", obs->type, right, bottom, top,dino->go.hitbox.y+GRACE_ZONE, obs->go.hitbox.y, left);
+        return true;
+    }
+    return false;
+}
+
+Obstacle* Level_CreateCactus(SDL_Texture* sprites_txt){
+    Obstacle* obs = malloc(sizeof(Obstacle));
+    if (obs == NULL) 
+        return NULL; 
+
+    obs->go.hitbox = (SDL_FRect){GAME_WINDOW_WIDTH, GROUND_HEIGHT - CACTUS_H , CACTUS_W, CACTUS_H};
+    obs->go.move = Obstacle_MoveCactus;
+    obs->go.draw = Obstacle_DrawCactus;
+    obs->go.childclass_ref = obs;
+    obs->go.sprites_txt = sprites_txt;
+    obs->type = GROUND;
+    obs->sprite = r(0, 4);
+    obs->animation_counter = 0;
 
 
-bool Level_DetectCollision(Dino* dino, Obstacle* obs);
-Obstacle* Level_CreateCactus(SDL_Texture* sprites_txt);
-Obstacle* Level_CreatePterodactyl(SDL_Texture* sprites_txt);
-void Level_RemoveObstacle(LinkedList* obje_list, Obstacle* obs);
+    if(obs->sprite == 4){
+        obs->go.hitbox.w = CACTUS_W*2;
+    }
+   // o->id = (ObstacleID){'c', 0};
 
-void Level_Init(LinkedList* obj_list){
+    return obs;
+}
+Obstacle* Level_CreatePterodactyl(SDL_Texture* sprites_txt){
+    Obstacle* obs = malloc(sizeof(Obstacle));
+    if (obs == NULL) 
+        return NULL; 
+
+    obs->go.hitbox = (SDL_FRect){ GAME_WINDOW_WIDTH, GROUND_HEIGHT - DINO_H + 30 - 85 , 100, 85};
+    obs->go.move = Obstacle_MovePterodactyl;
+    obs->go.draw = Obstacle_DrawPterodactyl;
+    obs->go.childclass_ref = obs;
+    obs->go.sprites_txt = sprites_txt;
+    obs->type = AIR;
+    obs->sprite = 0;
+    obs->animation_counter = 0;
+
+    return obs;
+}
+
+void Level_RemoveObstacle(LinkedList* obj_list, Obstacle* obs){
+    if(obs != NULL)
+        LL_Remove(obj_list, obs);
     
-    obj_list = LL_Create();
-
-    // seed is not neccessary
-    srand(time(NULL));
 }
 
 void Level_Update(LinkedList* obj_list, Dino* dino){
@@ -57,67 +104,4 @@ void Level_Update(LinkedList* obj_list, Dino* dino){
         if(obs->go.hitbox.x < -obs->go.hitbox.w)
             Level_RemoveObstacle(obj_list, obs);
     }
-}
-
-bool Level_DetectCollision(Dino* dino, Obstacle* obs){
-
-    bool right = dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w;
-    bool bottom = dino->go.hitbox.y + dino->go.hitbox.h - GRACE_ZONE > obs->go.hitbox.y && dino->go.hitbox.y + dino->go.hitbox.h - GRACE_ZONE < obs->go.hitbox.y + obs->go.hitbox.h;
-    bool top = dino->go.hitbox.y + GRACE_ZONE/2 > obs->go.hitbox.y && dino->go.hitbox.y + GRACE_ZONE/2 < obs->go.hitbox.y + obs->go.hitbox.h;
-    bool left = dino->go.hitbox.x + GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w;
-
-    if((right || left) && (top || bottom) ){
-        SDL_Log("collision %d right: %d bottom: %d top: %d dino top: %f obstop: %f left: %d\n", obs->type, right, bottom, top,dino->go.hitbox.y+GRACE_ZONE, obs->go.hitbox.y, left);
-        return true;
-    }
-    return false;
-}
-
-Obstacle* Level_CreateCactus(SDL_Texture* sprites_txt){
-    Obstacle* obs = malloc(sizeof(Obstacle));
-    if (obs == NULL) 
-        return NULL; 
-
-    obs->go.hitbox = (SDL_FRect){GAME_WINDOW_WIDTH, GROUND - CACTUS_H , CACTUS_W, CACTUS_H};
-    obs->go.move = Obstacle_MoveCactus;
-    obs->go.draw = Obstacle_DrawCactus;
-    obs->go.childclass_ref = obs;
-    obs->go.sprites_txt = sprites_txt;
-    obs->type = GROUND;
-    obs->sprite = r(0, 4);
-    obs->animation_counter = 0;
-
-
-    if(obs->sprite == 4){
-        obs->go.hitbox.w = CACTUS_W*2;
-    }
-   // o->id = (ObstacleID){'c', 0};
-
-    return obs;
-}
-Obstacle* Level_CreatePterodactyl(SDL_Texture* sprites_txt){
-    Obstacle* obs = malloc(sizeof(Obstacle));
-    if (obs == NULL) 
-        return NULL; 
-
-    obs->go.hitbox = (SDL_FRect){ GAME_WINDOW_WIDTH, GROUND - DINO_H + 30 - 85 , 100, 85};
-    obs->go.move = Obstacle_MovePterodactyl;
-    obs->go.draw = Obstacle_DrawPterodactyl;
-    obs->go.childclass_ref = obs;
-    obs->go.sprites_txt = sprites_txt;
-    obs->type = AIR;
-    obs->sprite = 0;
-    obs->animation_counter = 0;
-
-    return obs;
-}
-
-void Level_RemoveObstacle(LinkedList* obj_list, Obstacle* obs){
-    if(obs != NULL)
-        LL_Remove(obj_list, obs);
-    
-}
-
-int r(int min, int max) {
-    return rand() % (max - min + 1) + min;
 }

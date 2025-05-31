@@ -14,9 +14,6 @@
 #include "ll.h"
 #include "level.h"
 
-extern int high_score;
-extern bool show_hitbox;
-extern float actual_fps;
 
 int DR_Start();
 uint64_t millis();

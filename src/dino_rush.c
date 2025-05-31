@@ -1,20 +1,142 @@
 #include "../header/dino_rush.h" 
 
-TTF_Font* font = NULL;
-
 int high_score = 0, total_high_score = 0;
 bool show_hitbox = false;
 float actual_fps = DESIRED_FPS;
 
 int DR_Run(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino);
 void DR_GameLogic(LinkedList* obj_list, Dino* dino);
-void DR_Draw(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino);
+void DR_Draw(TTF_Font* font,SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino);
 int DR_Init(SDL_Texture** bg_txt, SDL_Texture** sprites_txt);
-Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, char* buff );
+Bounds DR_DrawText(TTF_Font* font, int x, int y, TextLayout layout, SDL_Color col, char* buff );
 void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* text_sur);
 void DR_LoopThrottle();
-void DR_ShowFPS();
+void DR_ShowFPS(TTF_Font* font);
 int DR_TitleScreen(SDL_Texture* bg_txt);
+
+
+int DR_Start(){
+
+    static bool played_titlescreen = false;
+
+    SDL_Texture* sprites_txt = NULL;
+    SDL_Texture* bg_txt = NULL;
+    LinkedList* obj_list = NULL;
+    int feedback = 0;
+    high_score = 0;
+
+    if(DR_Init(&bg_txt, &sprites_txt) != 0){
+        SDL_Log("- couldnt init Game!\n");
+        return -1;
+    }
+
+    if(!played_titlescreen){
+
+        if(DR_TitleScreen(bg_txt) != 0)
+            goto EndTitleScreen;
+
+        played_titlescreen = true;
+    }
+
+    // high score file init
+    FILE* high_score_file = fopen("high_score.txt", "r");
+
+    if(high_score_file == NULL){
+        SDL_Log("- couldnt open high score file to read high score!\n");
+        return -1;
+    }
+
+    char b[128];
+    if(!fgets(b, 100, high_score_file)){
+         if(!obj_list){
+            SDL_Log("- couldnt fetch high score number!\n");
+            goto EndTitleScreen;
+        }
+    }
+    total_high_score = atoi(b);
+    if(fclose(high_score_file) != 0){
+        SDL_Log("- couldnt close high score file!\n");
+        goto EndTitleScreen;
+    }
+
+    obj_list = LL_Create();
+
+    if(!obj_list){
+        SDL_Log("- couldnt create Linked List!\n");
+        goto EndTitleScreen;
+    }
+    // seed is not neccessary
+    srand(time(NULL));
+
+    Dino* dino = malloc(sizeof(Dino));
+
+    if(dino == NULL){
+        SDL_Log("- could not allocate memory for Player!\n");
+        return -1;
+    }
+
+    dino->mid_air = false;
+    dino->long_jump = false;
+    dino->ducking = false;
+    dino->reward = 0;
+    dino->dead = false;
+    dino->jump_angle = 0;
+    dino->go.hitbox = (SDL_FRect){ GAME_WINDOW_WIDTH / 8, GROUND_HEIGHT - DINO_H, DINO_W, DINO_H};
+    dino->go.draw = Dino_Draw;
+    dino->go.move = Dino_Move;
+    dino->go.childclass_ref = dino;
+    dino->go.sprites_txt = sprites_txt;
+
+    feedback = DR_Run(bg_txt, obj_list, dino);
+    if(feedback == GAME_WINDOW_EVENT_EXIT_CRASH){
+        SDL_Log("- Unexpected Game crash!\n");
+    } 
+
+    if(high_score > total_high_score){
+
+        high_score_file = fopen("high_score.txt", "w");
+
+        if(high_score_file == NULL){
+            SDL_Log("- couldnt open high score file to store high score!\n");
+            goto CleanUpEpilogue;
+        }//
+        // over write existing buffer
+        snprintf(b, 100, "%d", high_score);
+        if(!fputs(b, high_score_file)){
+            SDL_Log("- couldnt write high score to file!\n");
+        }
+        fclose(high_score_file);
+    }
+
+    SDL_Log("----------------------------\n");
+    SDL_Log("+ Cleanup epilogue\n");
+    SDL_Log("----------------------------\n\n");
+
+    if(!LL_Clean(obj_list)){
+        SDL_Log("- couldnt properly free Linked List data structure\n");
+    }else{
+        SDL_Log("+ freed Linked List data structure\n");
+    }
+
+CleanUpEpilogue:
+
+    free(dino);
+    free(obj_list);
+    SDL_Log("+ freed allocated structs\n");
+
+EndTitleScreen:
+
+    SDL_DestroyTexture(bg_txt);
+    SDL_DestroyTexture(sprites_txt);
+
+    SDL_Log("+ cleaned textures/surfaces\n");
+
+    TTF_Quit();
+
+    SDL_Log("+ disposed SDL3_TTF\n");
+
+    return feedback;
+}
 
 int DR_TitleScreen(SDL_Texture* bg_txt){
  
@@ -24,6 +146,12 @@ int DR_TitleScreen(SDL_Texture* bg_txt){
     float alpha_logo = 0, alpha_press_start = 0;
     bool animation_finish = false, start_end_sequence = false;
     bool run_title_screen = true;
+
+    TTF_Font* font = TTF_OpenFont("assets/slkscr.ttf", 40);
+    if (!font) {
+        SDL_Log("- Failed to load font slkscr.ttf: %s", SDL_GetError());
+        return -1;
+    }
 
     while(run_title_screen){
         
@@ -48,23 +176,23 @@ int DR_TitleScreen(SDL_Texture* bg_txt){
         SDL_RenderTexture(renderer, bg_txt, NULL, NULL);
 
         TTF_SetFontSize(font, 80);
-        DR_DrawText(GAME_WINDOW_WIDTH/2, GAME_WINDOW_HEIGHT/2 + y_pos + end_logo_y, RIGHT | CENTER_Y, (SDL_Color) {0xff, 0x33, 0x00, (Uint8)alpha_logo}, "Dino");
-        DR_DrawText(GAME_WINDOW_WIDTH/2, GAME_WINDOW_HEIGHT/2 + y_pos+ end_logo_y, LEFT | CENTER_Y, (SDL_Color) {255, 0, 0, (Uint8)alpha_logo}, "Rush");
+        DR_DrawText(font, GAME_WINDOW_WIDTH/2, GAME_WINDOW_HEIGHT/2 + y_pos + end_logo_y, RIGHT | CENTER_Y, (SDL_Color) {0xff, 0x33, 0x00, (Uint8)alpha_logo}, "Dino");
+        DR_DrawText(font, GAME_WINDOW_WIDTH/2, GAME_WINDOW_HEIGHT/2 + y_pos+ end_logo_y, LEFT | CENTER_Y, (SDL_Color) {255, 0, 0, (Uint8)alpha_logo}, "Rush");
 
         if(animation_finish){
             
             TTF_SetFontSize(font, 60);
 
-            Bounds b = DR_DrawText(end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6, LEFT | CENTER_Y, (SDL_Color) {128, 128, 128, 255}, "Controls:");
+            Bounds b = DR_DrawText(font, end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6, LEFT | CENTER_Y, (SDL_Color) {128, 128, 128, 255}, "Controls:");
             TTF_SetFontSize(font, 40);
-            Bounds txt_b = DR_DrawText(end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Hold [SPACE] to jump high");
+            Bounds txt_b = DR_DrawText(font, end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Hold [SPACE] to jump high");
             b.w = txt_b.w;
-            txt_b.h += DR_DrawText(end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [SPACE] to jump low").h;
-            txt_b.h += DR_DrawText(end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [S] to duck").h;
-            txt_b.h += DR_DrawText(end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [H] to show every Hitbox").h;
+            txt_b.h += DR_DrawText(font, end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [SPACE] to jump low").h;
+            txt_b.h += DR_DrawText(font, end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [S] to duck").h;
+            txt_b.h += DR_DrawText(font, end_controls_x, GAME_WINDOW_HEIGHT/2 - GAME_WINDOW_HEIGHT/6 + txt_b.h, LEFT | CENTER_Y, (SDL_Color) {0, 0, 0, 255}, "- Press [H] to show every Hitbox").h;
 
             TTF_SetFontSize(font, 50);
-            Bounds txt_pak = DR_DrawText(GAME_WINDOW_WIDTH/2 - 20, GAME_WINDOW_HEIGHT - GAME_WINDOW_HEIGHT/5 + end_press_any_key_y, CENTER, (SDL_Color) {0x2E, 0x60, 0x21, (Uint8)alpha_press_start}, "Press SPACE Key");
+            Bounds txt_pak = DR_DrawText(font, GAME_WINDOW_WIDTH/2 - 20, GAME_WINDOW_HEIGHT - GAME_WINDOW_HEIGHT/5 + end_press_any_key_y, CENTER, (SDL_Color) {0x2E, 0x60, 0x21, (Uint8)alpha_press_start}, "Press SPACE Key");
 
             // get input after animation is finished
             // once SPACE is pressed hold animation via || start_end_sequence
@@ -89,10 +217,13 @@ int DR_TitleScreen(SDL_Texture* bg_txt){
 
         SDL_Event event;
          while (SDL_PollEvent(&event)) 
-            if (event.type == SDL_EVENT_QUIT) 
+            if (event.type == SDL_EVENT_QUIT) {
+                TTF_CloseFont(font);
                 return GAME_WINDOW_EVENT_EXIT_SAFE;
+            }
+                
             
-        DR_ShowFPS();
+        DR_ShowFPS(font);
         
         if(!animation_finish || delay > 10)
             SDL_RenderPresent(renderer);
@@ -100,12 +231,41 @@ int DR_TitleScreen(SDL_Texture* bg_txt){
         DR_LoopThrottle();
     }
 
-    TTF_SetFontSize(font, 40);
+    TTF_CloseFont(font);
 
     return feedback;
 }
 
-void DR_ShowFPS(){
+
+int DR_Init(SDL_Texture** bg_txt, SDL_Texture** sprites_txt){
+
+    if(!TTF_Init()){
+        SDL_Log("- could not init SDL3_TTF lib!\n");
+        return -1;
+    }
+
+    // sprites init
+    SDL_Surface* bg_s = IMG_Load("assets/desert_pixel.bmp");
+    if(bg_s == NULL){
+        SDL_Log("- IMG_Load failed: %s", SDL_GetError());
+        return -1;
+    }
+    SDL_Surface* sprites_s = IMG_Load("assets/base64.bmp");
+    if(sprites_s == NULL){
+        SDL_Log("- IMG_Load failed: %s", SDL_GetError());
+        return -1;
+    }
+    *bg_txt = SDL_CreateTextureFromSurface(renderer, bg_s);
+    *sprites_txt = SDL_CreateTextureFromSurface(renderer, sprites_s);
+
+    SDL_DestroySurface(bg_s);
+    SDL_DestroySurface(sprites_s);
+
+    return 0;
+}
+
+
+void DR_ShowFPS(TTF_Font* font){
     
     // static -> declared once in static memory
     // every call reuses same memory
@@ -118,7 +278,7 @@ void DR_ShowFPS(){
 
     Uint64 ticks_now = SDL_GetPerformanceCounter();
     true_fps_counter++;
-  //  SDL_Log("%llu \n", millis() - prev_time_true_fps);
+
     if(ticks_now - prev_time_true_fps > SDL_GetPerformanceFrequency()){
         prev_time_true_fps = ticks_now; 
 
@@ -148,161 +308,29 @@ void DR_ShowFPS(){
 
     char buff[128];
     snprintf(buff, sizeof(buff), "FPS: %d", true_fps);
-    Bounds b = DR_DrawText(0, 0, LEFT, (SDL_Color) {0, 0, 0, 255} ,buff);   
+    Bounds b = DR_DrawText(font, 0, 0, LEFT, (SDL_Color) {0, 0, 0, 255} ,buff);   
 }
 
-int DR_Init(SDL_Texture** bg_txt, SDL_Texture** sprites_txt){
-
-    if(!TTF_Init()){
-        SDL_Log("- could not init SDL3_TTF lib!\n");
-        return -1;
-    }
-
-    font = TTF_OpenFont("assets/slkscr.ttf", 40);
-    if (!font) {
-        SDL_Log("- Failed to load font slkscr.ttf: %s", SDL_GetError());
-        return -1;
-    }
-
-    // sprites init
-    SDL_Surface* bg_s = IMG_Load("assets/desert_pixel.bmp");
-    if(bg_s == NULL){
-        SDL_Log("- IMG_Load failed: %s", SDL_GetError());
-        return -1;
-    }
-    SDL_Surface* sprites_s = IMG_Load("assets/base64.bmp");
-    if(sprites_s == NULL){
-        SDL_Log("- IMG_Load failed: %s", SDL_GetError());
-        return -1;
-    }
-    *bg_txt = SDL_CreateTextureFromSurface(renderer, bg_s);
-    *sprites_txt = SDL_CreateTextureFromSurface(renderer, sprites_s);
-
-    SDL_DestroySurface(bg_s);
-    SDL_DestroySurface(sprites_s);
-
-    return 0;
-}
-
-int DR_Start(){
-
-    static bool played_titlescreen = false;
-
-    SDL_Texture* sprites_txt = NULL;
-    SDL_Texture* bg_txt = NULL;
-    LinkedList* obj_list = NULL;
-    int feedback = 0;
-    high_score = 0;
-
-    if(DR_Init(&bg_txt, &sprites_txt) != 0){
-        SDL_Log("- couldnt init Game!\n");
-        return -1;
-    }
-
-    if(!played_titlescreen){
-
-        if(DR_TitleScreen(bg_txt) != 0)
-            goto EndTitleScreen;
-
-        played_titlescreen = true;
-    }
-
-    Dino* dino = malloc(sizeof(Dino));
-
-    if(dino == NULL){
-        SDL_Log("- could not allocate memory for Player!\n");
-        return -1;
-    }
-
-    dino->mid_air = false;
-    dino->long_jump = false;
-    dino->ducking = false;
-    dino->reward = 0;
-    dino->dead = false;
-    dino->jump_angle = 0;
-    dino->go.hitbox = (SDL_FRect){ GAME_WINDOW_WIDTH / 8, GROUND - DINO_H, DINO_W, DINO_H};
-    dino->go.draw = Dino_Draw;
-    dino->go.move = Dino_Move;
-    dino->go.childclass_ref = dino;
-    dino->go.sprites_txt = sprites_txt;
-
-    // high score file init
-    FILE* high_score_file = fopen("high_score.txt", "r");
-
-    if(high_score_file == NULL){
-        SDL_Log("- couldnt open high score file to read high score!\n");
-        return -1;
-    }
-
-    char b[128];
-    fgets(b, 100, high_score_file);
-    total_high_score = atoi(b);
-    fclose(high_score_file);
-
-    obj_list = LL_Create();
-    Level_Init(obj_list);
-       //SDL_Log("+ high score %d\n", total_high_score);
-    feedback = DR_Run(bg_txt, obj_list, dino);
-    if(feedback == GAME_WINDOW_EVENT_EXIT_CRASH){
-        SDL_Log("- Unexpected Game crash!\n");
-    } 
-
-    if(high_score > total_high_score){
-
-        high_score_file = fopen("high_score.txt", "w");
-
-         if(high_score_file == NULL){
-            SDL_Log("- couldnt open high score file to store high score!\n");
-            return -1;
-        }//
-        // over write existing buffer
-        snprintf(b, 100, "%d", high_score);
-        fputs(b, high_score_file);
-        fclose(high_score_file);
-    }
-
-    SDL_Log("----------------------------\n");
-    SDL_Log("+ Cleanup epilouge\n");
-    SDL_Log("----------------------------\n\n");
-
-    if(!LL_Clean(obj_list)){
-        SDL_Log("- couldnt properly free Linked List data structure\n");
-    }else{
-        SDL_Log("+ freed Linked List data structure\n");
-    }
-
-    free(dino);
-    free(obj_list);
-    SDL_Log("+ freed allocated structs\n");
-
-EndTitleScreen:
-
-    SDL_DestroyTexture(bg_txt);
-    SDL_DestroyTexture(sprites_txt);
-
-    SDL_Log("+ cleaned textures/surfaces\n");
-
-    TTF_CloseFont(font);
-    TTF_Quit();
-
-    SDL_Log("+ disposed SDL3_TTF\n");
-
-    return feedback;
-}
 
 int DR_Run(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino){
   
     int window_feedback = GAME_WINDOW_EVENT_NOERR;
 
+    TTF_Font* font = TTF_OpenFont("assets/slkscr.ttf", 40);
+    if (!font) {
+        SDL_Log("- Failed to load font slkscr.ttf: %s", SDL_GetError());
+        return -1;
+    }
+
     while (window_feedback == GAME_WINDOW_EVENT_NOERR) {
         
         DR_GameLogic(obj_list, dino);
  
-        DR_Draw(bg_txt, obj_list, dino);
+        DR_Draw(font, bg_txt, obj_list, dino);
         
         window_feedback = WindowEvents(dino);
 
-        DR_ShowFPS();
+        DR_ShowFPS(font);
         SDL_RenderPresent(renderer);
         DR_LoopThrottle();
 
@@ -310,7 +338,7 @@ int DR_Run(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino){
     if(window_feedback == GAME_WINDOW_EVENT_EXIT_CRASH){
         SDL_Log("- something went wrong inside GameLoop!\n");
     }
-
+    TTF_CloseFont(font);
     return window_feedback;
 }
 
@@ -339,7 +367,7 @@ void DR_GameLogic(LinkedList* obj_list, Dino* dino){
     }
 }
 
-void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* text_sur){
+void DR_RenderText( int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* text_sur){
 
     int padding = 10, x_adjust = 0, y_adjust = 0;
     SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_sur);
@@ -371,7 +399,7 @@ void DR_RenderText(int x, int y, SDL_Color col, TextLayout layout, SDL_Surface* 
     SDL_DestroyTexture(text_texture);
 }
 
-Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, char* buff){
+Bounds DR_DrawText(TTF_Font* font, int x, int y, TextLayout layout, SDL_Color col, char* buff){
 
     SDL_Surface* text_sur = TTF_RenderText_Blended(font, buff, 0, col);
     
@@ -386,7 +414,7 @@ Bounds DR_DrawText(int x, int y, TextLayout layout, SDL_Color col, char* buff){
     return b;
 }
 
-void DR_Draw(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino){
+void DR_Draw(TTF_Font* font,SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino){
 
     // background
     SDL_RenderTexture(renderer, bg_txt, NULL, NULL);
@@ -394,13 +422,13 @@ void DR_Draw(SDL_Texture* bg_txt, LinkedList* obj_list, Dino* dino){
     char buff[128];
 
     snprintf(buff, sizeof(buff), "HI: %d", high_score);
-    int text_width = GAME_WINDOW_WIDTH - DR_DrawText(GAME_WINDOW_WIDTH, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,buff).w - 20;
+    int text_width = GAME_WINDOW_WIDTH - DR_DrawText(font, GAME_WINDOW_WIDTH, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,buff).w - 20;
 
     snprintf(buff, sizeof(buff), "%d", total_high_score);
-    text_width -= DR_DrawText(text_width, 0, RIGHT, (SDL_Color) {0xff, 0x33, 0x00, 0xff} ,buff).w;
+    text_width -= DR_DrawText(font, text_width, 0, RIGHT, (SDL_Color) {0xff, 0x33, 0x00, 0xff} ,buff).w;
 
     snprintf(buff, sizeof(buff), "TOTAL HI: ");
-    DR_DrawText(text_width, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,"TOTAL HI: ");
+    DR_DrawText(font, text_width, 0, RIGHT, (SDL_Color) {0, 0, 0, 255} ,"TOTAL HI: ");
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     dino->go.draw(&dino->go);

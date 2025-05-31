@@ -1,5 +1,6 @@
 #include "../header/game_object.h"
 
+
 void Dino_Draw(GameObject* go){
 
     Dino* dino = (Dino*)go->childclass_ref;
@@ -21,12 +22,12 @@ void Dino_Draw(GameObject* go){
     if(dino->ducking){
         ducking_offset_y = 35;
         sprite_offset = 527 + 118 * dino_running_animation;
-        go->hitbox.y = GROUND - DINO_H + 30;
+        go->hitbox.y = GROUND_HEIGHT - DINO_H + 30;
         go->hitbox.h = 60;
         go->hitbox.w = 118;
 
     }else if(!dino->mid_air){
-        go->hitbox.y = GROUND - DINO_H;
+        go->hitbox.y = GROUND_HEIGHT - DINO_H;
         go->hitbox.h = DINO_H;
         go->hitbox.w = DINO_W;
     }
@@ -85,7 +86,7 @@ void Obstacle_DrawPterodactyl(GameObject* go){
 void Dino_Move(GameObject* go){
 
     Dino* dino = (Dino*)go->childclass_ref;
-    dino->go.hitbox.y = dino->ducking ? GROUND - DINO_H + 30 : GROUND - DINO_H;
+    dino->go.hitbox.y = dino->ducking ? GROUND_HEIGHT - DINO_H + 30 : GROUND_HEIGHT - DINO_H;
 
     if(dino->jump_angle != 0 && dino->jump_angle < PI){
 

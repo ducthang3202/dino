@@ -13,13 +13,7 @@ int main(){
         return -1;
     }
 
-    int feedback = 0;
-
-    while((feedback = DR_Start()) == 0){
-        if(feedback == 1){
-            // window closed
-        }
-    }
+    while(DR_Start() == 0);
 
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);

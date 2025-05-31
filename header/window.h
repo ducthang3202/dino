@@ -13,7 +13,7 @@
 #define GAME_WINDOW_EVENT_EXIT_CRASH -1
 #define GAME_WINDOW_WIDTH 1000
 #define GAME_WINDOW_HEIGHT 600
-#define GROUND GAME_WINDOW_HEIGHT - GAME_WINDOW_HEIGHT /10
+#define GROUND_HEIGHT GAME_WINDOW_HEIGHT - GAME_WINDOW_HEIGHT /10
 
 typedef struct Bounds{
     int w;
@@ -30,8 +30,6 @@ typedef enum {
     TOP      = 0x0100000,
     BOTTOM   = 0x1000000
 }TextLayout;
-
-extern SDL_Renderer* renderer;
 
 int CreateGameWindow(SDL_Window* window);
 int WindowEvents(Dino* dino);

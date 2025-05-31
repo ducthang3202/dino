@@ -12,7 +12,7 @@ typedef enum{
     AIR
 }ObstacleType;
 
-// simulate polymorphism ins c
+// simulate polymorphism in c
 struct GameObject{
     // function pointer -> has to be manually assigned to a function in game_object.c upon initialization 
     // in java/C# the object instance is passed implicitly
@@ -57,6 +57,7 @@ typedef struct{
 #define CACTUS_W 49
 #define CACTUS_H 97
 
+extern SDL_Renderer* renderer;
 extern int high_score;
 extern bool show_hitbox;
 extern float actual_fps;
