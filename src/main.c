@@ -4,7 +4,11 @@ int main(){
 
     if(DESIRED_FPS > 700){
         printf("- cant run the game if fps is greater than 700\n");
-        Sleep(5000);
+        #ifdef _WIN32
+    Sleep(5000);  // Windows: Sleep takes milliseconds
+#else
+    usleep(5000 * 1000);  // macOS/Linux: usleep takes microseconds
+#endif
         return -1;
     }
     SDL_Window* window = NULL;

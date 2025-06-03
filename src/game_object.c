@@ -120,8 +120,8 @@ void Dino_Move(GameObject* go){
 }
 
 void Dino_PassedObstacle(Dino* dino, Obstacle* obs){
-    if((dino->go.hitbox.x + GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w ||
-        dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE > obs->go.hitbox.x && dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w)){
+    if(((dino->go.hitbox.x + GRACE_ZONE > obs->go.hitbox.x) && (dino->go.hitbox.x + GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w)) ||
+   ((dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE > obs->go.hitbox.x) && (dino->go.hitbox.x + dino->go.hitbox.w - GRACE_ZONE < obs->go.hitbox.x + obs->go.hitbox.w))){
             if(!dino->long_jump)
                 dino->reward = 20;
             else if(obs->type == AIR)

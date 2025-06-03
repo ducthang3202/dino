@@ -274,6 +274,7 @@ void DR_ShowFPS(TTF_Font* font){
     static int true_fps_counter = 0;
     static int true_fps = 0;
     static bool optimizing_fps = false;
+    (void)optimizing_fps;
     static int wait_changes = 0;
 
     Uint64 ticks_now = SDL_GetPerformanceCounter();
@@ -308,7 +309,8 @@ void DR_ShowFPS(TTF_Font* font){
 
     char buff[128];
     snprintf(buff, sizeof(buff), "FPS: %d", true_fps);
-    Bounds b = DR_DrawText(font, 0, 0, LEFT, (SDL_Color) {0, 0, 0, 255} ,buff);   
+    Bounds b = DR_DrawText(font, 0, 0, LEFT, (SDL_Color) {0, 0, 0, 255} ,buff);
+    (void)b;   
 }
 
 
