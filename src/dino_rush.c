@@ -131,9 +131,9 @@ EndTitleScreen:
 
     SDL_Log("+ cleaned textures/surfaces\n");
 
-    TTF_Quit();
+    //TTF_Quit();
 
-    SDL_Log("+ disposed SDL3_TTF\n");
+    //SDL_Log("+ disposed SDL3_TTF\n");
 
     return feedback;
 }

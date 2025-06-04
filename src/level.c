@@ -59,13 +59,13 @@ Obstacle* Level_CreatePterodactyl(SDL_Texture* sprites_txt){
 }
 
 void Level_RemoveObstacle(LinkedList* obj_list, Obstacle* obs){
-    if(obs != NULL)
+    if(obs != NULL) {
         LL_Remove(obj_list, obs);
-    
+        //free(obs);  // Free the obstacle memory after removing from list
+    }
 }
 
 void Level_Update(LinkedList* obj_list, Dino* dino){
-
     static bool timer_running = false;
     static uint64_t timer = 0;
     static int delay = 0;
@@ -79,29 +79,55 @@ void Level_Update(LinkedList* obj_list, Dino* dino){
     if(timer_running && millis() - timer > delay){
         timer_running = false;
 
+        Obstacle* new_obstacle = NULL;
+        
         if(r(1,3) == 2)
-            LL_Add(obj_list, Level_CreatePterodactyl(dino->go.sprites_txt));
+            new_obstacle = Level_CreatePterodactyl(dino->go.sprites_txt);
         else
-            LL_Add(obj_list, Level_CreateCactus(dino->go.sprites_txt));
+            new_obstacle = Level_CreateCactus(dino->go.sprites_txt);
+        
+        if(new_obstacle != NULL) {
+            LL_Add(obj_list, new_obstacle);
+        } else {
+            SDL_Log("Warning: Failed to create obstacle (out of memory?)");
+        }
     } 
     
     if(obj_list->size == 0)
         return;
 
-    // main obstacle list iteration. Most actions between dino and obstacle will be handled in here
+    // Create a list to track obstacles to remove (to avoid iterator invalidation)
+    Obstacle* to_remove[10];  // Assuming max 10 obstacles need removal per frame
+    int remove_count = 0;
+    
+    // main obstacle list iteration
     Node* curr = obj_list->NIL;
     while((curr = curr->next) != obj_list->NIL){
         Obstacle* obs = (Obstacle*)curr->data;
+        
+        if(obs == NULL) {
+            continue;
+        }
+        
         obs->go.move(&obs->go);
 
         if(Level_DetectCollision(dino, obs)){
             dino->dead = true;
             break;
         }
+        
         if(dino->mid_air && dino->reward == 0){
             Dino_PassedObstacle(dino, obs);
         }
-        if(obs->go.hitbox.x < -obs->go.hitbox.w)
-            Level_RemoveObstacle(obj_list, obs);
+        
+        // Mark for removal instead of removing immediately
+        if(obs->go.hitbox.x < -obs->go.hitbox.w && remove_count < 10) {
+            to_remove[remove_count++] = obs;
+        }
+    }
+    
+    // Now remove obstacles outside of the iteration loop
+    for(int i = 0; i < remove_count; i++) {
+        Level_RemoveObstacle(obj_list, to_remove[i]);
     }
 }

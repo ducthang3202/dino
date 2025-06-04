@@ -72,12 +72,14 @@ int WindowEvents(Dino* dino) {
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT)
             return GAME_WINDOW_EVENT_EXIT_SAFE;
-        
-        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && dino->dead)
-            return GAME_WINDOW_EVENT_NOERR;
-        
+
         if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
-            // SDL3 uses 'key' instead of 'keysym.sym'
+            // Check for restart when player is dead and SPACE is pressed
+            if (dino->dead && event.key.key == SDLK_SPACE) {
+                return GAME_WINDOW_EVENT_NOERR;  // This will restart the game
+            }
+
+            // Check for 'H' key to toggle hitbox visibility
             if (event.key.key == SDLK_H) {
                 if ((SDL_GetModState() & SDL_KMOD_CTRL) != 0) {
                     show_hitbox = !show_hitbox;
@@ -85,24 +87,24 @@ int WindowEvents(Dino* dino) {
             }
         }
     }
-    
+
     const bool* state = SDL_GetKeyboardState(NULL);
-    
+
     if (dino->dead)
-        return GAME_WINDOW_EVENT_NOERR;
-    
+        return GAME_WINDOW_EVENT_NOERR;  // Prevent further movement if the player is dead
+
     if (!dino->mid_air)
         dino->ducking = state[SDL_SCANCODE_S];
     else
         dino->ducking = false;
-    
+
     if (dino->ducking)
         return GAME_WINDOW_EVENT_NOERR;
-    
+
     // Jump logic
     static int jump_timer = 0;
     static bool jump_down = false;
-    
+
     if (state[SDL_SCANCODE_SPACE]) {
         jump_down = true;
         jump_timer++;
@@ -117,6 +119,6 @@ int WindowEvents(Dino* dino) {
         jump_down = false;
         jump_timer = 0;
     }
-    
+
     return GAME_WINDOW_EVENT_NOERR;
 }
