@@ -1,0 +1,1 @@
+#define sprites 0
