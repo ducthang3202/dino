@@ -1,35 +1,46 @@
-sources   := $(wildcard src/*.c)
-objects   := $(sources:.c=.o)
-platform  :=
-executable :=
-LIB_PATH  =
+sources := $(wildcard src/*.c)
+objects := $(sources:.c=.o)
 
-CFLAGS    := -Wall -I"SDL/include/" -DDESIRED_FPS=120 -DALLOW_FPS_OPTIMIZING
-LDFLAGS   = -L$(LIB_PATH) -lSDL3 -lSDL3_image -lSDL3_ttf
+# Default to macOS build
+CFLAGS := -Wall -I"SDL/include" -DDESIRED_FPS=120 -DALLOW_FPS_OPTIMIZING
+LDFLAGS := -L"SDL/lib/macos" -lSDL3 -lSDL3_image -lSDL3_ttf
 
-buildW: platform := -DWIN
-buildW: executable := dinorush.exe
-buildW: LIB_PATH := SDL/lib/windows
-buildW: build
+# Platform-specific builds
+buildW: CFLAGS += -DWIN
+buildW: LDFLAGS = -L"SDL/lib/windows" -lSDL3 -lSDL3_image -lSDL3_ttf
+buildW: dinorush.exe
 
-buildL: platform := -DLINUX
-buildL: executable := dinorush
-buildL: LIB_PATH := SDL/lib/linux
-buildL: build
+buildL: CFLAGS += -DLINUX  
+buildL: LDFLAGS = -L"SDL/lib/linux" -lSDL3 -lSDL3_image -lSDL3_ttf
+buildL: dinorush
 
-buildM: platform := -DMAC
-buildM: executable := dinorush
-buildM: LIB_PATH := SDL/lib/macos
-buildM: build
+buildM: CFLAGS += -DMAC
+LDFLAGS = -L"SDL/lib/macos" -lSDL3 -lSDL3_image -lSDL3_ttf -Wl,-rpath,@loader_path/SDL/lib/macos
+buildM: dinorush
 
-buildA:
-	gcc $(CFLAGS) -DWIN $(sources) -o dinorush.exe -LSDL/lib/windows -lSDL3 -lSDL3_image -lSDL3_ttf
+# Build targets
+dinorush.exe: $(objects)
+	gcc $(objects) -o $@ $(LDFLAGS)
 
-build: $(objects)
-	gcc $(CFLAGS) $(platform) $(objects) -o $(executable) $(LDFLAGS)
+dinorush: $(objects)
+	gcc $(objects) -o $@ $(LDFLAGS)
 
+# Object files
 src/%.o: src/%.c
-	gcc -c $(CFLAGS) $(platform) $< -o $@
+	gcc -c $(CFLAGS) $< -o $@
+
+# Alternative direct build (for testing)
+buildA:
+	gcc $(CFLAGS) -DWIN $(sources) -o dinorush.exe -L"SDL/lib/windows" -lSDL3 -lSDL3_image -lSDL3_ttf
 
 clean:
 	rm -f $(objects) dinorush dinorush.exe
+
+# Debug target to show variables
+debug:
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "sources: $(sources)"
+	@echo "objects: $(objects)"
+
+.PHONY: buildW buildL buildM buildA clean debug

@@ -31,5 +31,5 @@ typedef enum {
     BOTTOM   = 0x1000000
 }TextLayout;
 
-int CreateGameWindow(SDL_Window* window);
+int CreateGameWindow(SDL_Window** window);
 int WindowEvents(Dino* dino);

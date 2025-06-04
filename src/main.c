@@ -13,7 +13,7 @@ int main(){
     }
     SDL_Window* window = NULL;
 
-    if( CreateGameWindow(window) != 0){
+    if( CreateGameWindow(&window) != 0){
         return -1;
     }
 
